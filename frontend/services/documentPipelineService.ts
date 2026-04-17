@@ -32,6 +32,52 @@ type ProcessOptions = {
   // reserved for future pipeline options (OCR, layout extraction, etc.)
 };
 
+function normalizeNewlines(text: string): string {
+  return String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+function removeIsolatedNoiseLines(text: string): string {
+  const lines = normalizeNewlines(text).split('\n');
+  const cleaned: string[] = [];
+
+  for (const rawLine of lines) {
+    const line = String(rawLine || '');
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      cleaned.push('');
+      continue;
+    }
+
+    if (/^\d$/.test(trimmed)) {
+      continue;
+    }
+    if (/^[•\-–—_.,;:|\\/]+$/.test(trimmed)) {
+      continue;
+    }
+
+    cleaned.push(line);
+  }
+
+  return cleaned.join('\n');
+}
+
+function cleanExtractedText(text: string): string {
+  let t = normalizeNewlines(text);
+  t = t.replace(/\u00a0/g, ' ');
+  t = removeIsolatedNoiseLines(t);
+
+  // Keep paragraph spacing, but normalize pathological whitespace.
+  t = t
+    .split('\n')
+    .map((l) => String(l).replace(/[ \t]+$/g, ''))
+    .join('\n');
+  t = t.replace(/[ \t]{2,}/g, ' ');
+  t = t.replace(/\n{4,}/g, '\n\n\n');
+
+  return t.trim();
+}
+
 function isBulletLine(line: string): boolean {
   return /^\s*(?:[-*•]|\d+\.|\d+\))\s+\S+/.test(line);
 }
@@ -48,7 +94,7 @@ function isHeadingLine(line: string): boolean {
 }
 
 function toStructuredBlocks(text: string): PipelineBlock[] {
-  const normalized = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const normalized = normalizeNewlines(text);
   const lines = normalized.split('\n');
 
   const blocks: PipelineBlock[] = [];
@@ -60,7 +106,11 @@ function toStructuredBlocks(text: string): PipelineBlock[] {
     if (joined) blocks.push({ type: 'paragraph', content: joined });
   };
 
-  for (const rawLine of lines) {
+  const isSentenceEnd = (s: string) => /[.!?।]$/.test(s);
+  const looksLikeNewParagraphStart = (s: string) => /^["'“‘(\[]?[A-Z0-9]/.test(s);
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i] ?? '';
     const line = rawLine.replace(/\s+$/g, '');
     const trimmed = line.trim();
 
@@ -79,6 +129,11 @@ function toStructuredBlocks(text: string): PipelineBlock[] {
       flushParagraph();
       blocks.push({ type: 'heading', content: trimmed });
       continue;
+    }
+
+    const prev = paragraph.length > 0 ? paragraph[paragraph.length - 1] : '';
+    if (prev && isSentenceEnd(prev) && looksLikeNewParagraphStart(trimmed) && prev.length <= 160) {
+      flushParagraph();
     }
 
     paragraph.push(trimmed);
@@ -368,11 +423,12 @@ export async function processDocument(file: File, _options?: ProcessOptions): Pr
     throw new Error('UNSUPPORTED_FILE');
   }
 
-  const blocks = toStructuredBlocks(text);
+  const cleaned = cleanExtractedText(text);
+  const blocks = toStructuredBlocks(cleaned);
   const rebuilt = rebuildTextFromBlocks(blocks);
 
   return {
-    text: rebuilt || text,
+    text: rebuilt || cleaned || text,
     blocks,
     layout: {
       blocks,
@@ -390,7 +446,8 @@ export async function translateDocument(
   options?: { signal?: AbortSignal; sourceLanguage?: string }
 ): Promise<string> {
   if (!content) return '';
-  const blocks = toStructuredBlocks(content);
+  const cleaned = cleanExtractedText(content);
+  const blocks = toStructuredBlocks(cleaned);
   const cache = new Map<string, Promise<string>>();
   const translatedBlocks: PipelineBlock[] = [];
   const ctx = { signal: options?.signal, sourceLanguage: options?.sourceLanguage, cache };
