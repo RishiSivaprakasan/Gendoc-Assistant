@@ -1,0 +1,5 @@
+{
+  "name": "Gendoc Assistant updated",
+  "description": "An AI-powered document intelligence web app that translates, summarizes, and answers questions about your documents, with a focus on Indian regional languages. It provides side-by-side translation, preserves document structure, and includes a user dashboard for history.",
+  "requestFramePermissions": []
+}

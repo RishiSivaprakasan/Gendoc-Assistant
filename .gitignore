@@ -1,0 +1,30 @@
+# Node
+node_modules/
+**/node_modules/
+
+# Python venv
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
