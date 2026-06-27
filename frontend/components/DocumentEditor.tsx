@@ -32,6 +32,8 @@ export default function DocumentEditor({ defaultLanguage, document, onSave, onCr
   const [outputText, setOutputText] = useState('');
   const [summaryText, setSummaryText] = useState('');
 
+  const [fileContext, setFileContext] = useState<{ fileName?: string; fileType?: string; extractionMethod?: string }>({});
+
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
 
@@ -63,6 +65,7 @@ export default function DocumentEditor({ defaultLanguage, document, onSave, onCr
       setChatHistory([]);
       setChatInput('');
       setDetectedLanguage('English');
+      setFileContext({});
       return;
     }
 
@@ -73,6 +76,7 @@ export default function DocumentEditor({ defaultLanguage, document, onSave, onCr
     setSummaryText(document.summary || '');
     setChatHistory(document.chatHistory || []);
     setChatInput('');
+    setFileContext({ fileName: document.fileName });
 
     const cached = detectedLanguageCacheRef.current.get(document.id);
     if (cached) {
@@ -265,9 +269,18 @@ export default function DocumentEditor({ defaultLanguage, document, onSave, onCr
     setIsLoading('Parsing file…');
     try {
       let content = '';
+      let nextFileContext: { fileName?: string; fileType?: string; extractionMethod?: string } = {
+        fileName: file.name,
+        fileType: file.type,
+      };
       try {
         const extracted = await processDocument(file, {});
         content = extracted.text;
+        nextFileContext = {
+          fileName: extracted.metadata?.fileName || file.name,
+          fileType: extracted.metadata?.type || file.type,
+          extractionMethod: (extracted.metadata as any)?.extractionMethod,
+        };
       } catch (err) {
         toast({ type: 'error', title: 'Unsupported file', message: 'Please upload .txt, .docx, .pdf, or an image file.' });
         return;
@@ -279,6 +292,7 @@ export default function DocumentEditor({ defaultLanguage, document, onSave, onCr
       setOutputText('');
       setSummaryText('');
       setChatHistory([]);
+      setFileContext(nextFileContext);
 
       const sample = String(content || '').replace(/\s+/g, ' ').trim().slice(0, 450);
       const nextDetected = detectLanguageFromSample(sample);
@@ -603,7 +617,7 @@ export default function DocumentEditor({ defaultLanguage, document, onSave, onCr
 
       setIsLoading('Assistant is thinking…');
       try {
-        const resp = await chatWithDocument(src, nextHistory, q, language);
+        const resp = await chatWithDocument(src, nextHistory, q, language, fileContext);
         setChatHistory((prev) => {
           const updated: ChatMessage[] = [...prev, { sender: 'ai' as const, text: resp }];
           persist({ originalContent: inputText, translatedContent: outputText, summary: summaryText, chatHistory: updated, targetLanguage: language });
@@ -616,7 +630,7 @@ export default function DocumentEditor({ defaultLanguage, document, onSave, onCr
         }, 50);
       }
     },
-    [canUseDownstream, chatHistory, chatInput, ensureDocument, inputText, language, outputText, persist, summaryText, toast]
+    [canUseDownstream, chatHistory, chatInput, ensureDocument, fileContext, inputText, language, outputText, persist, summaryText, toast]
   );
 
   return (

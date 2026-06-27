@@ -49,7 +49,8 @@ export const chatWithDocument = async (
     documentText: string,
     chatHistory: ChatMessage[],
     question: string,
-    language: string
+    language: string,
+    fileContext?: { fileName?: string; fileType?: string; extractionMethod?: string }
 ): Promise<string> => {
     if (!documentText || !question) return '';
 
@@ -57,10 +58,26 @@ export const chatWithDocument = async (
     const historyContext = chatHistory
         .map(msg => `${msg.sender === 'user' ? 'User' : 'AI'}: ${msg.text}`)
         .join('\n');
+
+    const contextLines: string[] = [];
+    if (fileContext?.fileName) contextLines.push(`- File name: ${fileContext.fileName}`);
+    if (fileContext?.fileType) contextLines.push(`- File type: ${fileContext.fileType}`);
+    if (fileContext?.extractionMethod) contextLines.push(`- Text source: ${fileContext.extractionMethod}`);
+    const fileContextSection = contextLines.length > 0 ? contextLines.join('\n') : '- File details: (not provided)';
     
     try {
-        const prompt = `You are a helpful, conversational assistant answering questions about a document.
-        
+        const prompt = `You are a helpful, conversational assistant answering questions about an uploaded file.
+
+        IMPORTANT CONTEXT ABOUT THE FILE:
+        ${fileContextSection}
+
+        IMPORTANT RULES:
+        1. Use ONLY the extracted text content provided below as your source of truth.
+        2. Do NOT add any information that is not present in the extracted text.
+        3. If the answer is not found in the extracted text, politely say so.
+        4. If the uploaded file is an IMAGE or a scanned PDF and the user asks visual questions (colors, objects, positions), be honest: you cannot see the image itself. You only have OCR-extracted text.
+        5. If the user asks questions like "What is this image about?" or "What is this PDF about?", treat it as: summarize what the extracted text says the file is about.
+
         DOCUMENT CONTENT:
         ---
         ${documentText}
@@ -76,13 +93,10 @@ export const chatWithDocument = async (
         USER QUESTION: "${question}"
         
         INSTRUCTIONS:
-        1. Answer the user’s question clearly using ONLY the provided document content.
-        2. Do NOT add any information that is not present in the document.
-        3. If the answer is not found in the document, politely say so.
-        4. Use a friendly and conversational tone.
-        5. Keep the response concise and natural.
-        6. After answering, ask a short follow-up question that encourages the user to continue exploring the document (e.g., ask if they want to know more or explore another part).
-        7. Respond first in ${language}, then provide the same response in English.
+        1. Use a friendly and conversational tone.
+        2. Keep the response concise and natural.
+        3. After answering, ask a short follow-up question that encourages the user to continue exploring the file.
+        4. Respond first in ${language}, then provide the same response in English.
 
         Format:
 
