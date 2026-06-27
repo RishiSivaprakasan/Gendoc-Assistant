@@ -1,10 +1,10 @@
 # Gendoc Assistant
 
-Gendoc Assistant is a full-stack document processing application that helps users upload or paste content, translate it into supported languages, generate summaries, and ask questions about the document in a chat-based workflow. The project combines a React and TypeScript frontend with a Node.js and Express backend, backed by MongoDB and optional Python-based translation services.
+Gendoc Assistant is a full-stack document processing application that enables users to upload or paste documents, translate content, generate summaries, and ask questions through an AI-powered chat interface. Built as a monorepo with a React and TypeScript frontend and a Node.js and Express backend, it supports a complete document workflow for multilingual understanding and interaction.
 
-## Project Description
+## Overview
 
-Gendoc Assistant is designed for working with documents that need multilingual translation and quick understanding. Users can:
+Gendoc Assistant is designed for working with documents that require translation, quick comprehension, and assisted analysis. Users can:
 
 - Upload text files, Word documents, PDFs, or image files
 - Extract document content from supported file types
@@ -205,5 +205,8 @@ Contributions are welcome. If you would like to improve the project, please foll
 
 ## Contributors
 
-- Rishi Sivaprakasan – https://github.com/RishiSivaprakasan
-- Thirilose Jones Nithish R – https://github.com/ThiriloseJonesNithish-R
+This project was collaboratively developed as a final-year project by:
+- Rishi Sivaprakasan (https://github.com/RishiSivaprakasan)
+- Thirilose Jones Nithish R (https://github.com/ThiriloseJonesNithish-R)
+
+The original repository is maintained by Rishi Sivaprakasan.
