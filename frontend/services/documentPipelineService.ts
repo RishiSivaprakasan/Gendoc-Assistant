@@ -19,6 +19,7 @@ type PipelineLayout = {
 type PipelineMetadata = {
   fileName: string;
   type: string;
+  extractionMethod?: string;
 };
 
 export type PipelineExtractedDocument = {
@@ -407,6 +408,7 @@ async function extractTextFromTxt(file: File): Promise<string> {
 
 export async function processDocument(file: File, _options?: ProcessOptions): Promise<PipelineExtractedDocument> {
   let text = '';
+  let extractionMethod = 'direct';
 
   if (file.type === 'text/plain') {
     text = await extractTextFromTxt(file);
@@ -415,9 +417,11 @@ export async function processDocument(file: File, _options?: ProcessOptions): Pr
   } else if (file.type === 'application/pdf') {
     text = await extractTextFromPdf(file);
     if (!text.trim()) {
+      extractionMethod = 'ocr';
       text = await extractTextWithOCR(file);
     }
   } else if (file.type.startsWith('image/')) {
+    extractionMethod = 'ocr';
     text = await extractTextWithOCR(file);
   } else {
     throw new Error('UNSUPPORTED_FILE');
@@ -436,6 +440,7 @@ export async function processDocument(file: File, _options?: ProcessOptions): Pr
     metadata: {
       fileName: file.name,
       type: file.type || (file.name.toLowerCase().endsWith('.docx') ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : ''),
+      extractionMethod,
     },
   };
 }
@@ -466,7 +471,8 @@ export async function chatWithDocument(
   content: string,
   history: ChatMessage[],
   question: string,
-  language: string
+  language: string,
+  fileContext?: { fileName?: string; fileType?: string; extractionMethod?: string }
 ): Promise<string> {
-  return geminiChatWithDocument(content, history, question, language);
+  return geminiChatWithDocument(content, history, question, language, fileContext);
 }
